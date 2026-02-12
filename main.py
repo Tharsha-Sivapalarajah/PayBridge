@@ -14,51 +14,47 @@ from persistence.repository import (
 
 
 def run_integration():
-    # Setup logging
     setup_logging()
     logging.info("Starting PayBridge integration process...")
 
-    # Initialize database
-    init_db()
+    try:
+        init_db()
 
-    # Fetch payments from ERP
-    payments = fetch_approved_payments()
+        payments = fetch_approved_payments()
 
-    if not payments:
-        logging.warning("No payments retrieved from ERP.")
-        return
+        if not payments:
+            logging.warning("No payments retrieved from ERP.")
+            return
 
-    valid_transformed = []
+        valid_transformed = []
 
-    for payment in payments:
-        payment_id = payment["paymentId"]
+        for payment in payments:
+            payment_id = payment["paymentId"]
 
-        # Idempotency check
-        if is_payment_processed(payment_id):
-            logging.info(f"Skipping already processed payment: {payment_id}")
-            continue
+            if is_payment_processed(payment_id):
+                logging.info(f"Skipping already processed payment: {payment_id}")
+                continue
 
-        # Validate business rules
-        errors = validate_payment(payment)
+            errors = validate_payment(payment)
 
-        if errors:
-            logging.warning(
-                f"Validation failed for {payment_id}: {errors}"
-            )
-            continue
+            if errors:
+                logging.warning(
+                    f"Validation failed for {payment_id}: {errors}"
+                )
+                continue
 
-        # Transform for bank format
-        transformed = transform_payment(payment)
-        valid_transformed.append(transformed)
+            transformed = transform_payment(payment)
+            valid_transformed.append(transformed)
 
-        # Mark as processed
-        mark_payment_processed(payment_id)
-        logging.info(f"Payment marked as processed: {payment_id}")
+            mark_payment_processed(payment_id)
+            logging.info(f"Payment marked as processed: {payment_id}")
 
-    # Write to CSV
-    write_payments_to_csv(valid_transformed)
+        write_payments_to_csv(valid_transformed)
 
-    logging.info("Integration process completed successfully.")
+        logging.info("Integration completed successfully.")
+
+    except Exception as e:
+        logging.error(f"Critical integration failure: {e}")
 
 
 if __name__ == "__main__":
